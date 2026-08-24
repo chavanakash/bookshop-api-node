@@ -37,8 +37,18 @@ pipeline {
             }
         }
 
+        stage('Install & Test') {
+            steps {
+                sh 'npm install'
+                sh 'npm test'
+            }
+        }
+
         stage('SonarQube Analysis') {
             steps {
+                // Must run after Install & Test: sonar-project.properties
+                // points sonar.javascript.lcov.reportPaths at coverage/lcov.info,
+                // which only exists once `npm test` has generated it.
                 withSonarQubeEnv('SonarQubeServer') {
                     sh "${tool 'SonarQubeScanner'}/bin/sonar-scanner -Dsonar.projectKey=${SONAR_PROJECT_KEY}"
                 }
@@ -53,13 +63,6 @@ pipeline {
                 timeout(time: 5, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
                 }
-            }
-        }
-
-        stage('Install & Test') {
-            steps {
-                sh 'npm install'
-                sh 'npm test'
             }
         }
 
