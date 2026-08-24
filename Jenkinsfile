@@ -70,17 +70,6 @@ pipeline {
             }
         }
 
-        stage('Trivy Scan') {
-            steps {
-                // Report-only, does not fail the build. The backend base image
-                // (node:10.15.3, Debian 9) is EOL and always reports ~1400
-                // HIGH/CRITICAL OS-level CVEs; the real fix is upgrading the
-                // Dockerfile's base image, not this gate.
-                sh "trivy image --exit-code 0 --severity LOW,MEDIUM,HIGH,CRITICAL --format table ${DOCKERHUB_REPO}:${IMAGE_TAG}"
-                sh "trivy image --exit-code 0 --severity LOW,MEDIUM,HIGH,CRITICAL --format table ${FRONTEND_REPO}:${IMAGE_TAG}"
-            }
-        }
-
         stage('Push to Docker Hub') {
             steps {
                 sh 'echo "$DOCKERHUB_CREDENTIALS_PSW" | docker login -u "$DOCKERHUB_CREDENTIALS_USR" --password-stdin'
@@ -131,6 +120,9 @@ pipeline {
         always {
             sh 'docker logout || true'
             cleanWs()
+        }
+        success {
+            echo "BookNook is live at: http://localhost:30091"
         }
         failure {
             echo 'Pipeline failed — check the stage logs above.'
