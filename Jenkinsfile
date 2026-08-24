@@ -18,6 +18,7 @@ pipeline {
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-creds')
         DOCKERHUB_REPO        = 'dockerizzz/bookshop-api-node' // TODO: replace with your Docker Hub repo
+        FRONTEND_REPO         = 'dockerizzz/bookshop-frontend' // TODO: replace with your Docker Hub repo
         IMAGE_TAG             = "${env.BUILD_NUMBER}"
         SONAR_PROJECT_KEY     = 'bookshop-api-node'
         K8S_DIR               = 'k8s'
@@ -62,19 +63,21 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Build Docker Images') {
             steps {
                 sh "docker build -t ${DOCKERHUB_REPO}:${IMAGE_TAG} -t ${DOCKERHUB_REPO}:latest ."
+                sh "docker build -t ${FRONTEND_REPO}:${IMAGE_TAG} -t ${FRONTEND_REPO}:latest ./frontend"
             }
         }
 
         stage('Trivy Scan') {
             steps {
-                // Report-only, does not fail the build. The base image
+                // Report-only, does not fail the build. The backend base image
                 // (node:10.15.3, Debian 9) is EOL and always reports ~1400
                 // HIGH/CRITICAL OS-level CVEs; the real fix is upgrading the
                 // Dockerfile's base image, not this gate.
                 sh "trivy image --exit-code 0 --severity LOW,MEDIUM,HIGH,CRITICAL --format table ${DOCKERHUB_REPO}:${IMAGE_TAG}"
+                sh "trivy image --exit-code 0 --severity LOW,MEDIUM,HIGH,CRITICAL --format table ${FRONTEND_REPO}:${IMAGE_TAG}"
             }
         }
 
@@ -83,22 +86,26 @@ pipeline {
                 sh 'echo "$DOCKERHUB_CREDENTIALS_PSW" | docker login -u "$DOCKERHUB_CREDENTIALS_USR" --password-stdin'
                 sh "docker push ${DOCKERHUB_REPO}:${IMAGE_TAG}"
                 sh "docker push ${DOCKERHUB_REPO}:latest"
+                sh "docker push ${FRONTEND_REPO}:${IMAGE_TAG}"
+                sh "docker push ${FRONTEND_REPO}:latest"
             }
         }
 
-        stage('Pull Image from Docker Hub') {
+        stage('Pull Images from Docker Hub') {
             steps {
-                // Pulls the just-pushed tag to prove the registry round-trip works
-                // before it's referenced by the Kubernetes manifest.
+                // Pulls the just-pushed tags to prove the registry round-trip works
+                // before they're referenced by the Kubernetes manifests.
                 sh "docker pull ${DOCKERHUB_REPO}:${IMAGE_TAG}"
+                sh "docker pull ${FRONTEND_REPO}:${IMAGE_TAG}"
             }
         }
 
-        stage('Update Kubernetes Manifest') {
+        stage('Update Kubernetes Manifests') {
             steps {
                 sh """
                     sed -i.bak "s#image: .*#image: ${DOCKERHUB_REPO}:${IMAGE_TAG}#g" ${K8S_DIR}/deployment.yaml
-                    rm -f ${K8S_DIR}/deployment.yaml.bak
+                    sed -i.bak "s#image: .*#image: ${FRONTEND_REPO}:${IMAGE_TAG}#g" ${K8S_DIR}/frontend-deployment.yaml
+                    rm -f ${K8S_DIR}/deployment.yaml.bak ${K8S_DIR}/frontend-deployment.yaml.bak
                 """
             }
         }
@@ -111,7 +118,10 @@ pipeline {
                     kubectl apply -f ${K8S_DIR}/mongo-service.yaml
                     kubectl apply -f ${K8S_DIR}/deployment.yaml
                     kubectl apply -f ${K8S_DIR}/service.yaml
+                    kubectl apply -f ${K8S_DIR}/frontend-deployment.yaml
+                    kubectl apply -f ${K8S_DIR}/frontend-service.yaml
                     kubectl rollout status deployment/bookshop-api --timeout=120s
+                    kubectl rollout status deployment/bookshop-frontend --timeout=120s
                 """
             }
         }

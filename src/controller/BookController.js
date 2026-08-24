@@ -1,15 +1,21 @@
 const Book = require("./../services/BookService");
 function BookController() {
   const listBooks = function(req, res) {
-    Book.list().then(data => res.json(data));
+    return Book.list()
+      .then(data => res.json(data))
+      .catch(err => res.status(500).json({ error: err.message }));
   };
 
   const addBooks = function(req, res) {
-    Book.add(req.body).then(data => res.json(data));
+    return Book.add(req.body)
+      .then(data => res.json(data))
+      .catch(err => res.status(500).json({ error: err.message }));
   };
 
   const deleteBooks = function(req, res) {
-    Book.delete(req.params.id).then(data => res.json(data));
+    return Book.delete(req.params.id)
+      .then(data => res.json(data))
+      .catch(err => res.status(500).json({ error: err.message }));
   };
 
   return {

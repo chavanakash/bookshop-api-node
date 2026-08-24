@@ -4,7 +4,9 @@ const BookService = require("../../src/services/BookService");
 const BookController = require("../../src/controller/BookController");
 
 function mockRes() {
-  return { json: jest.fn() };
+  const res = { json: jest.fn() };
+  res.status = jest.fn().mockReturnValue(res);
+  return res;
 }
 
 describe("BookController", () => {
@@ -39,5 +41,35 @@ describe("BookController", () => {
 
     expect(BookService.delete).toHaveBeenCalledWith("123");
     expect(res.json).toHaveBeenCalledWith({ _id: "123" });
+  });
+
+  it("list responds with a 500 when the service rejects", async () => {
+    BookService.list.mockRejectedValue(new Error("db down"));
+    const res = mockRes();
+
+    await BookController.list({}, res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: "db down" });
+  });
+
+  it("add responds with a 500 when the service rejects", async () => {
+    BookService.add.mockRejectedValue(new Error("db down"));
+    const res = mockRes();
+
+    await BookController.add({ body: {} }, res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: "db down" });
+  });
+
+  it("delete responds with a 500 when the service rejects", async () => {
+    BookService.delete.mockRejectedValue(new Error("db down"));
+    const res = mockRes();
+
+    await BookController.delete({ params: { id: "123" } }, res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: "db down" });
   });
 });

@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bookshop-frontend
+  labels:
+    app: bookshop-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: bookshop-frontend
+  template:
+    metadata:
+      labels:
+        app: bookshop-frontend
+    spec:
+      containers:
+        - name: bookshop-frontend
+          image: yourdockerhubusername/bookshop-frontend:latest
+          ports:
+            - containerPort: 80
+          env:
+            - name: BACKEND_HOST
+              value: bookshop-api
+            - name: BACKEND_PORT
+              value: "8080"

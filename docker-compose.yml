@@ -14,5 +14,14 @@ services:
       - "27017:27017"
     volumes:
       - mongodb:/data/db
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - web
+    environment:
+      - BACKEND_HOST=web
+      - BACKEND_PORT=8080
 volumes:
   mongodb:
