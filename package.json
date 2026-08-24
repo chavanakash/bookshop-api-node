@@ -4,7 +4,8 @@
   "description": "Bookshop - API",
   "main": "src/app.js",
   "scripts": {
-    "start": "pm2-runtime --json process.yml"
+    "start": "pm2-runtime --json process.yml",
+    "test": "jest --coverage"
   },
   "author": "sagarkbhatt",
   "license": "MIT",
@@ -12,5 +13,18 @@
     "body-parser": "^1.19.0",
     "express": "^4.16.4",
     "mongoose": "^5.13.15"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^6.3.4"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "collectCoverageFrom": [
+      "src/**/*.js",
+      "!src/server.js",
+      "!src/db/**"
+    ],
+    "coverageDirectory": "coverage"
   }
 }

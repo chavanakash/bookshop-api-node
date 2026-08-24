@@ -17,7 +17,7 @@ pipeline {
 
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-creds')
-        DOCKERHUB_REPO        = 'yourdockerhubusername/bookshop-api-node' // TODO: replace with your Docker Hub repo
+        DOCKERHUB_REPO        = 'dockerizzz/bookshop-api-node' // TODO: replace with your Docker Hub repo
         IMAGE_TAG             = "${env.BUILD_NUMBER}"
         SONAR_PROJECT_KEY     = 'bookshop-api-node'
         K8S_DIR               = 'k8s'
