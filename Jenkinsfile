@@ -22,6 +22,10 @@ pipeline {
         SONAR_PROJECT_KEY     = 'bookshop-api-node'
         K8S_DIR               = 'k8s'
         KUBECONFIG            = "${env.HOME}/.kube/config"
+        // Jenkins runs as a background LaunchAgent and does not inherit the
+        // interactive shell's PATH, so docker/kubectl (installed with Docker
+        // Desktop, not Homebrew) aren't found without this.
+        PATH                  = "/Applications/Docker.app/Contents/Resources/bin:/opt/homebrew/bin:${env.PATH}"
     }
 
     stages {
