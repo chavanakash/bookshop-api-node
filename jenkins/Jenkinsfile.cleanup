@@ -1,0 +1,18 @@
+// Separate scheduled pipeline: Jenkins cron triggers belong to their own job,
+// not to a stage of the push-triggered Jenkinsfile. Create a Pipeline job
+// pointing at this file and let this trigger drive it (see setup guide).
+pipeline {
+    agent any
+
+    triggers {
+        cron('0 * * * *') // checks hourly; only removes images older than 6h
+    }
+
+    stages {
+        stage('Prune images older than 6h') {
+            steps {
+                sh 'docker image prune -a --force --filter "until=6h"'
+            }
+        }
+    }
+}

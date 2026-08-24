@@ -9,7 +9,7 @@ function BookController() {
   };
 
   const deleteBooks = function(req, res) {
-    Book.delete(req.param.id).then(data => res.json(data));
+    Book.delete(req.params.id).then(data => res.json(data));
   };
 
   return {
