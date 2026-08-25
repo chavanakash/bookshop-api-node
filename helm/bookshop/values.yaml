@@ -3,7 +3,7 @@ backend:
   replicaCount: 2
   image:
     repository: dockerizzz/bookshop-api-node
-    tag: latest
+    tag: 14
   containerPort: 8080
   service:
     type: NodePort
@@ -19,7 +19,7 @@ frontend:
   replicaCount: 2
   image:
     repository: dockerizzz/bookshop-frontend
-    tag: latest
+    tag: 14
   containerPort: 80
   service:
     type: NodePort
