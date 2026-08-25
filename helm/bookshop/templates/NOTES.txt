@@ -1,0 +1,8 @@
+BookNook is deploying.
+
+Frontend:  http://localhost:{{ .Values.frontend.service.nodePort }}
+Backend:   http://localhost:{{ .Values.backend.service.nodePort }}/api/book/list
+
+Check rollout status with:
+  kubectl rollout status deployment/{{ .Values.backend.name }}
+  kubectl rollout status deployment/{{ .Values.frontend.name }}

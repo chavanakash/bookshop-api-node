@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: bookshop
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/chavanakash/bookshop-api-node.git
+    targetRevision: master
+    path: helm/bookshop
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

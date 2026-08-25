@@ -1,0 +1,34 @@
+backend:
+  name: bookshop-api
+  replicaCount: 2
+  image:
+    repository: dockerizzz/bookshop-api-node
+    tag: latest
+  containerPort: 8080
+  service:
+    type: NodePort
+    port: 8080
+    nodePort: 30090
+  env:
+    databaseUrl: mongodb://mongo:27017/book
+
+frontend:
+  name: bookshop-frontend
+  replicaCount: 2
+  image:
+    repository: dockerizzz/bookshop-frontend
+    tag: latest
+  containerPort: 80
+  service:
+    type: NodePort
+    port: 80
+    nodePort: 30091
+  env:
+    backendHost: bookshop-api
+    backendPort: "8080"
+
+mongo:
+  name: mongo
+  image: mongo:latest
+  containerPort: 27017
+  storage: 1Gi
