@@ -11,6 +11,8 @@ backend:
     nodePort: 30090
   env:
     databaseUrl: mongodb://mongo:27017/book
+    # TODO: override with --set backend.env.jwtSecret=... in a real deployment
+    jwtSecret: change-me-in-a-real-deployment
 
 frontend:
   name: bookshop-frontend

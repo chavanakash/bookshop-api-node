@@ -1,14 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
-import { api } from "./api.js";
+import { useEffect, useState } from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext.jsx";
+import { CartProvider, useCart } from "./context/CartContext.jsx";
 import { useToasts } from "./hooks/useToasts.js";
 import Header from "./components/Header.jsx";
-import Hero from "./components/Hero.jsx";
-import BookCard from "./components/BookCard.jsx";
-import EmptyState from "./components/EmptyState.jsx";
-import SkeletonGrid from "./components/SkeletonGrid.jsx";
-import AddBookPanel from "./components/AddBookPanel.jsx";
 import ToastStack from "./components/ToastStack.jsx";
-import FloatingAddButton from "./components/FloatingAddButton.jsx";
+import CartDrawer from "./components/CartDrawer.jsx";
+import Storefront from "./pages/Storefront.jsx";
+import Warehouse from "./pages/Warehouse.jsx";
+import Login from "./pages/Login.jsx";
+import Signup from "./pages/Signup.jsx";
+import Checkout from "./pages/Checkout.jsx";
 
 function getInitialTheme() {
   const stored = window.localStorage.getItem("booknook-theme");
@@ -16,113 +18,54 @@ function getInitialTheme() {
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
-export default function App() {
-  const [books, setBooks] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [query, setQuery] = useState("");
-  const [panelOpen, setPanelOpen] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [deletingId, setDeletingId] = useState(null);
+function Shell() {
   const [theme, setTheme] = useState(getInitialTheme);
+  const [cartOpen, setCartOpen] = useState(false);
   const { toasts, push, dismiss } = useToasts();
+  const cart = useCart();
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
     window.localStorage.setItem("booknook-theme", theme);
   }, [theme]);
 
-  useEffect(() => {
-    let cancelled = false;
-    api
-      .list()
-      .then(data => {
-        if (!cancelled) setBooks(data);
-      })
-      .catch(err => {
-        if (!cancelled) push(err.message || "Could not load books.", "error");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [push]);
-
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return books;
-    return books.filter(
-      b => b.title?.toLowerCase().includes(q) || b.desc?.toLowerCase().includes(q)
-    );
-  }, [books, query]);
-
-  async function handleAdd(payload) {
-    setSubmitting(true);
-    try {
-      const saved = await api.add(payload);
-      setBooks(current => [saved, ...current]);
-      push(`"${saved.title}" added to the shelf.`);
-      setPanelOpen(false);
-    } catch (err) {
-      push(err.message || "Could not add that book.", "error");
-      throw err;
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function handleDelete(id) {
-    const previous = books;
-    setDeletingId(id);
-    setBooks(current => current.filter(b => b._id !== id));
-    try {
-      await api.remove(id);
-      push("Book removed.");
-    } catch (err) {
-      setBooks(previous);
-      push(err.message || "Could not remove that book.", "error");
-    } finally {
-      setDeletingId(null);
-    }
-  }
-
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 transition-colors dark:bg-slate-950 dark:text-white">
       <Header
-        count={books.length}
         theme={theme}
         onToggleTheme={() => setTheme(t => (t === "dark" ? "light" : "dark"))}
+        cartCount={cart.count}
+        onOpenCart={() => setCartOpen(true)}
       />
-      <Hero query={query} onQueryChange={setQuery} />
 
-      <main className="mx-auto max-w-6xl px-6 pb-24">
-        {loading ? (
-          <SkeletonGrid />
-        ) : filtered.length === 0 ? (
-          <EmptyState hasQuery={query.trim().length > 0} />
-        ) : (
-          <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map(book => (
-              <BookCard
-                key={book._id}
-                book={book}
-                onDelete={handleDelete}
-                deleting={deletingId === book._id}
-              />
-            ))}
-          </ul>
-        )}
-      </main>
+      <Routes>
+        <Route path="/" element={<Storefront pushToast={push} />} />
+        <Route path="/warehouse" element={<Warehouse pushToast={push} />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/checkout" element={<Checkout pushToast={push} />} />
+      </Routes>
 
-      <FloatingAddButton onClick={() => setPanelOpen(true)} />
-      <AddBookPanel
-        open={panelOpen}
-        onClose={() => setPanelOpen(false)}
-        onSubmit={handleAdd}
-        submitting={submitting}
+      <CartDrawer
+        open={cartOpen}
+        onClose={() => setCartOpen(false)}
+        items={cart.items}
+        removeItem={cart.removeItem}
+        total={cart.total}
       />
       <ToastStack toasts={toasts} onDismiss={dismiss} />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <CartProvider>
+          <Shell />
+        </CartProvider>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }

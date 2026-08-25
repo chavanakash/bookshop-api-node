@@ -25,3 +25,5 @@ spec:
               value: {{ .Values.backend.env.databaseUrl | quote }}
             - name: PORT
               value: {{ .Values.backend.containerPort | quote }}
+            - name: JWT_SECRET
+              value: {{ .Values.backend.env.jwtSecret | quote }}

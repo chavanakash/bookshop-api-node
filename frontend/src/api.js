@@ -1,4 +1,4 @@
-const BASE = "/api/book";
+const ROOT = "/api";
 
 async function handle(res) {
   if (!res.ok) {
@@ -14,13 +14,42 @@ async function handle(res) {
   return res.json();
 }
 
+function authHeaders(token) {
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 export const api = {
-  list: () => fetch(`${BASE}/list`).then(handle),
+  list: () => fetch(`${ROOT}/book/list`).then(handle),
   add: book =>
-    fetch(`${BASE}/add`, {
+    fetch(`${ROOT}/book/add`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(book)
     }).then(handle),
-  remove: id => fetch(`${BASE}/delete/${id}`, { method: "DELETE" }).then(handle)
+  remove: id => fetch(`${ROOT}/book/delete/${id}`, { method: "DELETE" }).then(handle)
+};
+
+export const authApi = {
+  signup: data =>
+    fetch(`${ROOT}/auth/signup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    }).then(handle),
+  login: data =>
+    fetch(`${ROOT}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    }).then(handle)
+};
+
+export const orderApi = {
+  checkout: (payload, token) =>
+    fetch(`${ROOT}/orders/checkout`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders(token) },
+      body: JSON.stringify(payload)
+    }).then(handle),
+  mine: token => fetch(`${ROOT}/orders/mine`, { headers: authHeaders(token) }).then(handle)
 };

@@ -24,3 +24,5 @@ spec:
               value: mongodb://mongo:27017/book
             - name: PORT
               value: "8080"
+            - name: JWT_SECRET
+              value: change-me-in-a-real-deployment

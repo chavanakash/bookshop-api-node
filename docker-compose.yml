@@ -8,6 +8,7 @@ services:
       - mongo
     environment:
       - DATABASE_URL=mongodb://mongo/book
+      - JWT_SECRET=local-dev-secret
   mongo:
     image: mongo:latest
     ports:
