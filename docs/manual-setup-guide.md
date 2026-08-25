@@ -65,10 +65,15 @@ kubectl version --client
 
 ---
 
-## 3. kind — a local Kubernetes cluster
+## 3. Kubernetes cluster
+
+Two ways to get one, depending on where you're running this. Pick one, not both.
+
+### 3a. Quick option: kind (same machine as everything else)
 
 `kind` ("Kubernetes IN Docker") runs a real Kubernetes cluster entirely inside Docker
-containers — no cloud account, no separate VM needed.
+containers on the machine you're already on — no separate server needed. This is what the
+rest of this guide assumes.
 
 ```bash
 curl -fsSL -o kind "https://kind.sigs.k8s.io/dl/latest/kind-linux-amd64"
@@ -81,6 +86,110 @@ kind create cluster --name bookshop
 # Confirm it's up
 kubectl get nodes
 ```
+
+### 3b. Real option: kubeadm on an EC2 instance
+
+`kind`'s cluster lives inside Docker on one machine and disappears if that machine is torn
+down — fine for local dev, not what you'd actually run in the cloud. `kubeadm` is the tool
+that bootstraps a genuine, standalone Kubernetes cluster on a real server (this is the same
+tool used to build production self-managed clusters). This sets up a **single-node** cluster
+— the EC2 instance is both control-plane and worker, which is enough to run this project. To
+add more capacity later, repeat steps 1–4 on another EC2 instance and use the `kubeadm join`
+command from step 5 instead of `kubeadm init`.
+
+**Before you start**: launch an Ubuntu 22.04 EC2 instance, `t3.medium` or larger (kubeadm
+needs ≥2 CPUs and ≥2GB RAM), and open these inbound ports in its security group:
+`22` (SSH), `6443` (Kubernetes API), `10250-10252` (kubelet/scheduler/controller-manager),
+`30000-32767` (NodePort range — this project's frontend/backend use `30090`/`30091` in that
+range).
+
+**Step 1 — disable swap.** kubelet refuses to start if swap is on.
+```bash
+sudo swapoff -a
+sudo sed -i '/ swap / s/^/#/' /etc/fstab
+```
+
+**Step 2 — load the kernel modules and network settings Kubernetes needs.**
+```bash
+cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
+overlay
+br_netfilter
+EOF
+sudo modprobe overlay
+sudo modprobe br_netfilter
+
+cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-iptables  = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.ipv4.ip_forward                 = 1
+EOF
+sudo sysctl --system
+```
+
+**Step 3 — install containerd** (the container runtime kubeadm uses — separate from Docker,
+even though you may also have Docker installed for building images).
+```bash
+sudo apt-get update -y
+sudo apt-get install -y containerd
+
+sudo mkdir -p /etc/containerd
+containerd config default | sudo tee /etc/containerd/config.toml
+# kubeadm requires this to be true, not containerd's default
+sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
+
+sudo systemctl restart containerd
+sudo systemctl enable containerd
+```
+
+**Step 4 — install kubeadm, kubelet, and kubectl.**
+```bash
+sudo apt-get install -y apt-transport-https ca-certificates curl gpg
+
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key | \
+  sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /' | \
+  sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+sudo apt-get update -y
+sudo apt-get install -y kubelet kubeadm kubectl
+sudo apt-mark hold kubelet kubeadm kubectl
+```
+
+**Step 5 — initialize the cluster.**
+```bash
+sudo kubeadm init --pod-network-cidr=192.168.0.0/16
+```
+Save the `kubeadm join ...` command it prints at the end — that's what you'd run on any
+additional EC2 instance to add it as a worker node.
+
+**Step 6 — let your user run kubectl** (kubeadm writes the cluster config to a root-only file).
+```bash
+mkdir -p "$HOME/.kube"
+sudo cp -i /etc/kubernetes/admin.conf "$HOME/.kube/config"
+sudo chown "$(id -u):$(id -g)" "$HOME/.kube/config"
+```
+
+**Step 7 — install a pod network add-on.** kubeadm doesn't include one, and nodes stay
+`NotReady` until you do.
+```bash
+kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.28.0/manifests/calico.yaml
+```
+
+**Step 8 — allow pods to schedule on this node.** Single-node clusters need this: the
+control-plane role is tainted by default so ordinary workloads won't land on it, and here
+there's no separate worker to fall back to.
+```bash
+kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+```
+
+**Step 9 — verify.**
+```bash
+kubectl get nodes      # should show Ready
+kubectl get pods -A    # everything in kube-system should be Running
+```
+
+From here, every other section in this guide (Helm, ArgoCD, SonarQube, Trivy, Jenkins) works
+exactly the same — `kubectl` is just pointed at a real cluster instead of `kind`'s.
 
 ---
 
